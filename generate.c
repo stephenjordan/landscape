@@ -47,7 +47,6 @@ int main(int argc, char *argv[]) {
     return 0;
   }
   //generate a random instance
-  maxpow = 11; //max value is 2^maxpow
   maxval = 1;
   maxval <<= maxpow;
   for(k = 0; k < sss.K; k++) {
