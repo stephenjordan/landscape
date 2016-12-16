@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 //m is an array of size BINS. m stores the ones and zeros specifying the subset.
 //They are packed into 64-bit blocks. Residual is the value of the subset sum
@@ -147,11 +148,6 @@ void walk(double duration, double vscale, int W, instance *sss) {
   double ttot;          //the total time evolution elapsed
   int dest;             //destination walker
   int stepcount;        //total number of timesteps
-  printf("K = %i\n", sss->K);
-  printf("W = %i\n", W);
-  printf("BINS = %i\n", sss->BINS);
-  printf("duration = %e\n", duration);
-  printf("vscale = %e\n", vscale);
   //initialize the walkers to random locations
   pop1 = (walker *)malloc(W*sizeof(walker));
   pop2 = (walker *)malloc(W*sizeof(walker));
@@ -223,50 +219,61 @@ void walk(double duration, double vscale, int W, instance *sss) {
   free(pop2);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
   int W;                //the number of walkers
   instance sss;         //the instance of subset sum
   unsigned int seed;    //the seed for the rng
   double duration;      //physical time
   int k;                //counter variable for subset sum numbers
-  int maxpow;           //the biggest allowed number is 2^maxpow
-  uint64_t maxval;      //the biggest allowed number is 2^maxpow
   double vscale;        //scales the residual
-  //seed = time(NULL);
-  seed = 1481847052;    //fixed seed for testing
-  srand(seed);
-  printf("seed = %u\n", seed);
-  duration = 1000;
-  W = 20;
-  sss.K = 20;
+  FILE *fp;             //the file containing the instance
+  long long int vp, vm; //for loading vplus and vminus
+  uint64_t maxval;      //the biggest value in the instance
+  if(argc != 4) {
+    printf("usage: landscape walkers duration input.sss\n");
+    return 0;
+  }
+  W = atoi(argv[1]);
+  duration = atof(argv[2]);
+  fp = fopen(argv[3], "r");
+  if(fp == NULL) {
+    printf("Unable to read instance file %s\n", argv[3]);
+    return 0;
+  }
+  fscanf(fp, "%i", &sss.K);
   sss.BINS = bincount(sss.K);
   sss.vminus = malloc(sss.K*sizeof(uint64_t));
   sss.vplus = malloc(sss.K*sizeof(uint64_t));
   if(sss.vminus == NULL || sss.vplus == NULL) {
     printf("Unable to allocate instance.\n");
     return 0;
-  }
-  //generate a random instance
-  maxpow = 11; //max value is 2^maxpow
-  maxval = 1;
-  maxval <<= maxpow;
-  printf("maxval = 2^%d\n", maxpow);
+  }  
   for(k = 0; k < sss.K; k++) {
-    sss.vminus[k] = rand64()%maxval;
-    sss.vplus[k] = rand64()%maxval;
+    fscanf(fp, "%lld %lld", &vp, &vm);
+    sss.vplus[k]  = (uint64_t)vp;
+    sss.vminus[k] = (uint64_t)vm;
   }
+  printf("W = %d\n", W);
+  printf("duration = %lf\n", duration);
+  printf("infile= %s\n", argv[3]);
+  seed = time(NULL);
+  //seed = 1481847052;    //fixed seed for testing
+  srand(seed);
+  //for(k = 0; k < 160; k++) rand(); //for testing against earlier versions
+  printf("seed = %u\n", seed);
   printinstance(sss);
+  maxval = 0;
+  for(k = 0; k < sss.K; k++) {
+    if(sss.vminus[k] > maxval) maxval = sss.vminus[k];
+    if(sss.vplus[k] > maxval) maxval = sss.vplus[k];
+  }
+  printf("maxval = %llu\n", (unsigned long long)maxval);
+  //vscale = (double)100.0/(double)2048; //for testing against earlier versions
   vscale = (double)100.0/(double)maxval; //a guess, really
+  printf("vscale = %lf\n", vscale);
   walk(duration, vscale, W, &sss);
   free(sss.vminus);
   free(sss.vplus);
+  fclose(fp); 
   return 0;
 }
-
-
-//a "unit test"
-/*int main() {
-  int k;
-  for(k = 1; k < 500; k++) printf("%i\t%i\n", k, bincount(k));
-  return 0;
-}*/
