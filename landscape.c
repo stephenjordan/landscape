@@ -103,6 +103,14 @@ void hop(walker *cur, walker *pro, instance *sss) {
   else pro->residual = cur->residual + sss->vplus[bflip] + sss->vminus[bflip];
 }
 
+//hop to a neigbor or next-neighbor by flipping one or two bits
+void hop2(walker *cur, walker *pro, instance *sss) {
+  int type; //0 = 1 hop, 2 = 2 hops
+  type = rand()%2;
+  hop(cur, pro, sss);
+  if(type) hop(cur, pro, sss);
+}
+
 void sit(walker *cur, walker *pro, instance *sss) {
   int bin;
   for(bin = 0; bin < sss->BINS; bin++) pro->m[bin] = cur->m[bin];
@@ -183,7 +191,8 @@ int walk(double duration, double vscale, int W, instance *sss) {
       }
       //if(action == 1) walker dies, do nothing
       if(action == 0) { //hop
-        hop(&cur[w], &pro[dest], sss);
+        //hop2(&cur[w], &pro[dest], sss); //doesn't seem to really help
+        hop(&cur[w], &pro[dest], sss);      
         dest++;
       }
       w = (w+1)%W;
@@ -276,7 +285,7 @@ int main(int argc, char *argv[]) {
   printf("maxval = %llu\n", (unsigned long long)maxval);
   //vscale = (double)100.0/(double)2048; //for testing against earlier versions
   vscale = (double)100.0/(double)maxval; //a guess, really
-  printf("vscale = %lf\n", vscale);
+  printf("vscale = %e\n", vscale);
   t = 0;
   do {
     printf("trial %i------------------------------------\n", t+1);
