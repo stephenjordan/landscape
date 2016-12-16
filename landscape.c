@@ -2,36 +2,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//K is the number of numbers in the subset sum instance. Due to my hardcoding,
-//we must restrict it to 64*BINS. Put differently, we should normally set BINS
-//to the smallest integer i such that 64*i >= K. W is the number of walkers.
-//W = 20 was good for MAX3SAT.
-#define W 20
-
-//I'll use the convention that w is an index for walkers and k is an index for bits.
-
-//RAND_MAX is guaranteed to be always at least 2^16. Sometimes it is more but I will
-//not assume this. On my machine it is actually 2^31.
-
+//m is an array of size BINS. m stores the ones and zeros specifying the subset.
+//They are packed into 64-bit blocks. Residual is the value of the subset sum
+//instance.
 typedef struct {
   int64_t residual;
-  uint64_t *m; //maximum value of K is BINS*64
+  uint64_t *m;
 }walker;
 
+//K is the number of numbers in the subset sum instance. Due to my hardcoding,
+//we must restrict it to 64*BINS. Put differently, we should normally set BINS
+//to the smallest integer such that 64*i >= k. bincount() will compute this
+//number.
 typedef struct {
-  int K;
+  int K; 
   int BINS;
   uint64_t *vminus;
   uint64_t *vplus; 
 }instance;
 
-uint64_t rand64() {
-  return ((uint64_t)rand())^((uint64_t)rand()<<16)^((uint64_t)rand()<<32)^((uint64_t)rand()<<48);
-}
-
 int bincount(int K) {
   if(K%64 == 0) return K>>6;
   return (K>>6)+1;
+}
+
+//RAND_MAX is guaranteed to be always at least 2^16. Sometimes it is more but I will
+//not assume this. On my machine it is actually 2^31.
+uint64_t rand64() {
+  return ((uint64_t)rand())^((uint64_t)rand()<<16)^((uint64_t)rand()<<32)^((uint64_t)rand()<<48);
 }
 
 //return the kth bit of m
@@ -68,7 +66,7 @@ void evaluate(walker *w, instance *sss) {
   }
 }
 
-void initpop(walker *pop, instance *sss) {
+void initpop(walker *pop, int W, instance *sss) {
   int w, k;
   for(w = 0; w < W; w++) {
     pop[w].m = malloc(sss->BINS*sizeof(uint64_t));
@@ -80,7 +78,7 @@ void initpop(walker *pop, instance *sss) {
   }
 }
 
-void freepop(walker *pop) {
+void freepop(walker *pop, int W) {
   int w;
   for(w = 0; w < W; w++) free(pop[w].m);
 }
@@ -133,10 +131,10 @@ int64_t pot(int64_t residual) {
   else return -residual;
 }
 
-void walk(double duration, double vscale, instance *sss) {
+void walk(double duration, double vscale, int W, instance *sss) {
   int w;                //counter variable for walkers
-  walker pop1[W];       //a population of W walkers
-  walker pop2[W];       //a population of W walkers
+  walker *pop1;         //a population of W walkers
+  walker *pop2;         //a population of W walkers
   walker *cur;          //the current locations of walkers
   walker *pro;          //the locations in progress
   walker *tmp;          //temporary holder for pointer swapping
@@ -156,8 +154,10 @@ void walk(double duration, double vscale, instance *sss) {
   printf("duration = %e\n", duration);
   printf("vscale = %e\n", vscale);
   //initialize the walkers to random locations
-  initpop(pop1, sss);
-  initpop(pop2, sss);
+  pop1 = (walker *)malloc(W*sizeof(walker));
+  pop2 = (walker *)malloc(W*sizeof(walker));
+  initpop(pop1, W, sss);
+  initpop(pop2, W, sss);
   cur = pop1;
   pro = pop2;
   winners = 0;
@@ -218,11 +218,14 @@ void walk(double duration, double vscale, instance *sss) {
     for(w = 0; w < W; w++) if(pot(cur[w].residual) == umin) printstring(cur[w].m, sss->K);
   }
   printf("stepcount: %i\n", stepcount);
-  freepop(pop1);
-  freepop(pop2);
+  freepop(pop1, W);
+  freepop(pop2, W);
+  free(pop1);
+  free(pop2);
 }
 
 int main() {
+  int W;                //the number of walkers
   instance sss;         //the instance of subset sum
   unsigned int seed;    //the seed for the rng
   double duration;      //physical time
@@ -235,6 +238,7 @@ int main() {
   srand(seed);
   printf("seed = %u\n", seed);
   duration = 1000;
+  W = 20;
   sss.K = 20;
   sss.BINS = 1;
   sss.vminus = malloc(sss.K*sizeof(uint64_t));
@@ -254,7 +258,7 @@ int main() {
   }
   printinstance(sss);
   vscale = (double)100.0/(double)maxval; //a guess, really
-  walk(duration, vscale, &sss);
+  walk(duration, vscale, W, &sss);
   free(sss.vminus);
   free(sss.vplus);
   return 0;
