@@ -6,9 +6,9 @@
 //we must restrict it to 64*BINS. Put differently, we should normally set BINS
 //to the smallest integer i such that 64*i >= K. W is the number of walkers.
 //W = 20 was good for MAX3SAT.
-#define K 20
-#define BINS 1
 #define W 20
+int K;
+int BINS;
 
 //I'll use the convention that w is an index for walkers and k is an index for bits.
 
@@ -17,12 +17,12 @@
 
 typedef struct {
   int64_t residual;
-  uint64_t m[BINS]; //maximum value of K is BINS*64
+  uint64_t *m; //maximum value of K is BINS*64
 }walker;
 
 typedef struct {
-  uint64_t vminus[K];
-  uint64_t vplus[K]; 
+  uint64_t *vminus;
+  uint64_t *vplus; 
 }instance;
 
 uint64_t rand64() {
@@ -62,11 +62,6 @@ void printstring(uint64_t *m) {
   printf("\n");
 }
 
-void initpop(walker *pop) {
-  int w, k;
-  for(w = 0; w < W; w++) for(k = 0; k < BINS; k++) pop[w].m[k] = rand64();
-}
-
 void evaluate(walker *w, instance *sss) {
   int k;
   w->residual = 0;
@@ -76,16 +71,33 @@ void evaluate(walker *w, instance *sss) {
   }
 }
 
-printinstance(instance sss) {
-  int k;
-  for(k = 0; k < K; k++) {
-    printf("vplus[%i] = %llu\n", k, sss.vplus[k]);
-    printf("vminus[%i] = -%llu\n", k, sss.vminus[k]);
+void initpop(walker *pop, instance *sss) {
+  int w, k;
+  for(w = 0; w < W; w++) {
+    pop[w].m = malloc(BINS*sizeof(uint64_t));
+    if(pop[w].m == NULL) printf("Unable to allocate bins!\n");
+  }
+  for(w = 0; w < W; w++) {
+    for(k = 0; k < BINS; k++) pop[w].m[k] = rand64();
+    evaluate(&pop[w], sss);
   }
 }
 
-printwalker(walker w) {
-  printf("%lld\n", w.residual);
+void freepop(walker *pop) {
+  int w;
+  for(w = 0; w < W; w++) free(pop[w].m);
+}
+
+void printinstance(instance sss) {
+  int k;
+  for(k = 0; k < K; k++) {
+printf("vplus[%i] = %llu \n", k, (unsigned long long)sss.vplus[k]);
+printf("vminus[%i] = -%llu \n", k, (unsigned long long)sss.vminus[k]);
+  }
+}
+
+void printwalker(walker w) {
+  printf("%lld\n", (long long)w.residual);
   printstring(w.m);
 }
 
@@ -146,15 +158,14 @@ void walk(double duration, double vscale, instance *sss) {
   double ttot;          //the total time evolution elapsed
   int dest;             //destination walker
   int stepcount;        //total number of timesteps
-  uint64_t potential;
   printf("K = %i\n", K);
   printf("W = %i\n", W);
   printf("BINS = %i\n", BINS);
   printf("duration = %e\n", duration);
   printf("vscale = %e\n", vscale);
   //initialize the walkers to random locations
-  initpop(pop1);
-  for(w = 0; w < W; w++) evaluate(&pop1[w], sss);
+  initpop(pop1, sss);
+  initpop(pop2, sss);
   cur = pop1;
   pro = pop2;
   winners = 0;
@@ -162,7 +173,7 @@ void walk(double duration, double vscale, instance *sss) {
   stepcount = 0;
   do {
     s = ttot/duration;
-    //calculate the minimum potential amongst currently occupied locations
+    //calculate the minimum potential among currently occupied locations
     umin = pot(cur[0].residual);
     umax = umin;
     for(w = 0; w < W; w++) {
@@ -211,11 +222,12 @@ void walk(double duration, double vscale, instance *sss) {
       if(pot(cur[w].residual) < umin) umin = pot(cur[w].residual);
       if(pot(cur[w].residual) > umax) umax = pot(cur[w].residual);
     }
-    printf("Best solutions found have %llu potential.\n", umin);
+    printf("Best solutions found have %llu potential.\n", (long long)umin);
     for(w = 0; w < W; w++) if(pot(cur[w].residual) == umin) printstring(cur[w].m);
   }
-  //-------------------------------------------------------------------------------
   printf("stepcount: %i\n", stepcount);
+  freepop(pop1);
+  freepop(pop2);
   //for(w = 0; w < W; w++) printwalker(cur[w]);
 }
 
@@ -232,6 +244,14 @@ int main() {
   srand(seed);
   printf("seed = %u\n", seed);
   duration = 1000;
+  K = 20;
+  BINS = 1;
+  sss.vminus = malloc(K*sizeof(uint64_t));
+  sss.vplus = malloc(K*sizeof(uint64_t));
+  if(sss.vminus == NULL || sss.vplus == NULL) {
+    printf("Unable to allocate instance.\n");
+    return 0;
+  }
   //generate a random instance
   maxpow = 11; //max value is 2^maxpow
   maxval = 1;
@@ -244,45 +264,7 @@ int main() {
   printinstance(sss);
   vscale = (double)100.0/(double)maxval; //a guess, really
   walk(duration, vscale, &sss);
+  free(sss.vminus);
+  free(sss.vplus);
   return 0;
 }
-
-//some "unit tests"
-/*int main() {
-  int k, w;
-  instance sss;
-  uint64_t maxval;
-  walker pop[W];
-  walker pop2[W];
-  unsigned int seed;
-  int maxpow;
-  //seed = time(NULL);
-  seed = 1481838544; //keep fixed for debugging
-  srand(seed);
-  printf("seed = %u\n", seed);
-  //generate a random instance
-  maxpow = 40; //max value is 2^maxpow
-  maxval = 1;
-  maxval <<= maxpow;
-  printf("maxval = 2^%d\n", maxpow);
-  printf("K = %i\n", K);
-  printf("W = %i\n", W);
-  printf("BINS = %i\n", BINS);
-  for(k = 0; k < K; k++) {
-    sss.vminus[k] = rand64()%maxval;
-    sss.vplus[k] = rand64()%maxval;
-  }
-  printinstance(sss);
-  //initialize the walkers to random locations
-  initpop(pop);
-  for(w = 0; w < W; w++) {
-    evaluate(&pop[w], &sss);
-    printwalker(pop[w]);
-  }
-  for(w = 0; w < W; w++) {
-    printf("In walker %d\n",w);
-    hop(&pop[w], &pop2[w], &sss);
-  }
-  for(w = 0; w < W; w++) printwalker(pop2[w]); 
-  return 0;
-}*/
