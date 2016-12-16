@@ -85,10 +85,9 @@ void freepop(walker *pop, int W) {
 
 void printinstance(instance sss) {
   int k;
-  for(k = 0; k < sss.K; k++) {
-    printf("vplus[%i] = %llu \n", k, (unsigned long long)sss.vplus[k]);
-    printf("vminus[%i] = -%llu \n", k, (unsigned long long)sss.vminus[k]);
-  }
+  printf("k\tv+\tv-\n");
+  for(k = 0; k < sss.K; k++)
+    printf("%i\t%llu\t-%llu \n", k, (unsigned long long)sss.vplus[k], (unsigned long long)sss.vminus[k]);
 }
 
 //Hop to a random neighbor by flipping one bit.
@@ -240,7 +239,7 @@ int main() {
   duration = 1000;
   W = 20;
   sss.K = 20;
-  sss.BINS = 1;
+  sss.BINS = bincount(sss.K);
   sss.vminus = malloc(sss.K*sizeof(uint64_t));
   sss.vplus = malloc(sss.K*sizeof(uint64_t));
   if(sss.vminus == NULL || sss.vplus == NULL) {
@@ -263,3 +262,11 @@ int main() {
   free(sss.vplus);
   return 0;
 }
+
+
+//a "unit test"
+/*int main() {
+  int k;
+  for(k = 1; k < 500; k++) printf("%i\t%i\n", k, bincount(k));
+  return 0;
+}*/
