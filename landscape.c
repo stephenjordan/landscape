@@ -29,6 +29,11 @@ uint64_t rand64() {
   return ((uint64_t)rand())^((uint64_t)rand()<<16)^((uint64_t)rand()<<32)^((uint64_t)rand()<<48);
 }
 
+int bincount(int K) {
+  if(K%64 == 0) return K>>6;
+  return (K>>6)+1;
+}
+
 //return the kth bit of m
 int mval(uint64_t *m, int k) {
   int bin, shift;
@@ -91,8 +96,8 @@ void freepop(walker *pop) {
 void printinstance(instance sss) {
   int k;
   for(k = 0; k < K; k++) {
-printf("vplus[%i] = %llu \n", k, (unsigned long long)sss.vplus[k]);
-printf("vminus[%i] = -%llu \n", k, (unsigned long long)sss.vminus[k]);
+    printf("vplus[%i] = %llu \n", k, (unsigned long long)sss.vplus[k]);
+    printf("vminus[%i] = -%llu \n", k, (unsigned long long)sss.vminus[k]);
   }
 }
 
