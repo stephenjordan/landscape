@@ -38,7 +38,7 @@ int mval(uint64_t *m, int k) {
     return 0;
   }
   shift = k - (bin<<6);
-  return (m[bin]>>shift)%2;
+  return (m[bin]>>shift)&1LLU;
 }
 
 //flip the ith bit of m
@@ -153,8 +153,8 @@ int main() {
   double vscale;        //scales the residual
   int stepcount;        //total number of timesteps
   uint64_t potential;
-  seed = time(NULL);
-  //seed = 1481847052; //fixed seed for testing
+  //seed = time(NULL);
+  seed = 1481847052; //fixed seed for testing
   srand(seed);
   printf("seed = %u\n", seed);
   //generate a random instance
