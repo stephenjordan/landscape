@@ -129,14 +129,10 @@ int64_t pot(int64_t residual) {
   else return -residual;
 }
 
-int main() {
-  int k, w;             //counter variables: k for bit, w for walker
-  instance sss;         //the instance of subset sum
-  int maxpow;           //the biggest allowed number is 2^maxpow
-  uint64_t maxval;      //the biggest allowed number is 2^maxpow
+void walk(double duration, double vscale, instance *sss) {
+  int w;                //counter variable for walkers
   walker pop1[W];       //a population of W walkers
   walker pop2[W];       //a population of W walkers
-  unsigned int seed;    //the seed for the rng
   walker *cur;          //the current locations of walkers
   walker *pro;          //the locations in progress
   walker *tmp;          //temporary holder for pointer swapping
@@ -149,34 +145,16 @@ int main() {
   double dt;            //the adjustable timestep
   double ttot;          //the total time evolution elapsed
   int dest;             //destination walker
-  double duration;      //physical time
-  double vscale;        //scales the residual
   int stepcount;        //total number of timesteps
   uint64_t potential;
-  //seed = time(NULL);
-  seed = 1481847052; //fixed seed for testing
-  srand(seed);
-  printf("seed = %u\n", seed);
-  //generate a random instance
-  maxpow = 11; //max value is 2^maxpow
-  maxval = 1;
-  maxval <<= maxpow;
-  duration = 1000;                       //some random guess
-  vscale = (double)100.0/(double)maxval; //some random guess
-  printf("maxval = 2^%d\n", maxpow);
   printf("K = %i\n", K);
   printf("W = %i\n", W);
   printf("BINS = %i\n", BINS);
   printf("duration = %e\n", duration);
   printf("vscale = %e\n", vscale);
-  for(k = 0; k < K; k++) {
-    sss.vminus[k] = rand64()%maxval;
-    sss.vplus[k] = rand64()%maxval;
-  }
-  printinstance(sss);
   //initialize the walkers to random locations
   initpop(pop1);
-  for(w = 0; w < W; w++) evaluate(&pop1[w], &sss);
+  for(w = 0; w < W; w++) evaluate(&pop1[w], sss);
   cur = pop1;
   pro = pop2;
   winners = 0;
@@ -207,7 +185,7 @@ int main() {
       }
       //if(action == 1) walker dies, do nothing
       if(action == 0) { //hop
-        hop(&cur[w], &pro[dest], &sss);
+        hop(&cur[w], &pro[dest], sss);
         dest++;
       }
       w = (w+1)%W;
@@ -239,6 +217,33 @@ int main() {
   //-------------------------------------------------------------------------------
   printf("stepcount: %i\n", stepcount);
   //for(w = 0; w < W; w++) printwalker(cur[w]);
+}
+
+int main() {
+  instance sss;         //the instance of subset sum
+  unsigned int seed;    //the seed for the rng
+  double duration;      //physical time
+  int k;                //counter variable for subset sum numbers
+  int maxpow;           //the biggest allowed number is 2^maxpow
+  uint64_t maxval;      //the biggest allowed number is 2^maxpow
+  double vscale;        //scales the residual
+  //seed = time(NULL);
+  seed = 1481847052;    //fixed seed for testing
+  srand(seed);
+  printf("seed = %u\n", seed);
+  duration = 1000;
+  //generate a random instance
+  maxpow = 11; //max value is 2^maxpow
+  maxval = 1;
+  maxval <<= maxpow;
+  printf("maxval = 2^%d\n", maxpow);
+  for(k = 0; k < K; k++) {
+    sss.vminus[k] = rand64()%maxval;
+    sss.vplus[k] = rand64()%maxval;
+  }
+  printinstance(sss);
+  vscale = (double)100.0/(double)maxval; //a guess, really
+  walk(duration, vscale, &sss);
   return 0;
 }
 
