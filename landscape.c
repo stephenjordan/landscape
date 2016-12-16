@@ -131,7 +131,7 @@ int64_t pot(int64_t residual) {
   else return -residual;
 }
 
-void walk(double duration, double vscale, int W, instance *sss) {
+int walk(double duration, double vscale, int W, instance *sss) {
   int w;                //counter variable for walkers
   walker *pop1;         //a population of W walkers
   walker *pop2;         //a population of W walkers
@@ -217,6 +217,7 @@ void walk(double duration, double vscale, int W, instance *sss) {
   freepop(pop2, W);
   free(pop1);
   free(pop2);
+  return winners;
 }
 
 int main(int argc, char *argv[]) {
@@ -229,15 +230,19 @@ int main(int argc, char *argv[]) {
   FILE *fp;             //the file containing the instance
   long long int vp, vm; //for loading vplus and vminus
   uint64_t maxval;      //the biggest value in the instance
-  if(argc != 4) {
-    printf("usage: landscape walkers duration input.sss\n");
+  int trials;           //fresh trials of Markov Chain
+  int t;                //trial counter
+  int success;          //flag set to one if exact solution found
+  if(argc != 5) {
+    printf("usage: landscape walkers trials duration input.sss\n");
     return 0;
   }
   W = atoi(argv[1]);
-  duration = atof(argv[2]);
-  fp = fopen(argv[3], "r");
+  trials = atoi(argv[2]);
+  duration = atof(argv[3]);
+  fp = fopen(argv[4], "r");
   if(fp == NULL) {
-    printf("Unable to read instance file %s\n", argv[3]);
+    printf("Unable to read instance file %s\n", argv[4]);
     return 0;
   }
   fscanf(fp, "%i", &sss.K);
@@ -254,8 +259,9 @@ int main(int argc, char *argv[]) {
     sss.vminus[k] = (uint64_t)vm;
   }
   printf("W = %d\n", W);
+  printf("trials = %d\n", trials);
   printf("duration = %lf\n", duration);
-  printf("infile= %s\n", argv[3]);
+  printf("infile= %s\n", argv[4]);
   seed = time(NULL);
   //seed = 1481847052;    //fixed seed for testing
   srand(seed);
@@ -271,7 +277,12 @@ int main(int argc, char *argv[]) {
   //vscale = (double)100.0/(double)2048; //for testing against earlier versions
   vscale = (double)100.0/(double)maxval; //a guess, really
   printf("vscale = %lf\n", vscale);
-  walk(duration, vscale, W, &sss);
+  t = 0;
+  do {
+    printf("trial %i------------------------------------\n", t+1);
+    success = walk(duration, vscale, W, &sss);
+    t++;
+  }while(t < trials && !success);
   free(sss.vminus);
   free(sss.vplus);
   fclose(fp); 
